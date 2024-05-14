@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component inherit-compiler-output="true" inheritJdk="true">
+	<output-test url="file://$MODULE_DIR$/out/test/Chatty"/>
+	<exclude-output/>
+	<contentEntry url="file://$MODULE_DIR$"/>
+	<lib name="D:\jar_files" scope="COMPILE">
+		<srcroot url="file://D:/jar_files"/>
+	</lib>
+	<levels>
+		<level name="mysql-connector-j-8.3.01" value="project"/>
+	</levels>
+</component>
