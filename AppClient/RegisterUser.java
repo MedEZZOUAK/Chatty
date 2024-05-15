@@ -100,15 +100,9 @@ public class RegisterUser extends JFrame {
             stmt.executeUpdate(sql);
             qry = "insert into " + name + "(FriendName) values ('"+name+"');";
             stmt.executeUpdate(qry);
-            //add the private key to the privateKeys file privateKey.txt
-            try {
-              FileWriter fw = new FileWriter("privateKey.txt", true);
-              BufferedWriter bw = new BufferedWriter(fw);
-              bw.write(name + " " + privateKey + "\n");
-              bw.close();
-            } catch (IOException e) {
-              e.printStackTrace();
-            }
+            //add the private key to the privateKeys to the private table (username, privateKey)
+            sql = "insert into private values ('"+name+"', '"+privateKey+"');";
+            stmt.executeUpdate(sql);
             JOptionPane.showMessageDialog(null, "New User Registered!");
             appMain.names.add(name);
             LoginApp login = new LoginApp();

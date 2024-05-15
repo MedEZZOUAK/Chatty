@@ -116,26 +116,7 @@ public class LoginApp extends JFrame {
           if(rs.next()) {
             //If the password and username match, it launches the main application.
             if(pass.equals(rs.getString("Password"))) {
-              //get the public key from the db and the private key from the file
-              String PublicKey = rs.getString("PublicKey");
-              //Get the private key from the file
-              String filename = "privateKey.txt";
-              String key = "";
-              try{
-                BufferedReader br = new BufferedReader(new FileReader(filename));
-                String line;
-                while(( line = br.readLine() ) != null) {
-                  if(line.contains(name)) {
-                    String[] parts = line.split(" ");
-                    key = parts[1];
-                    break;
-                  }
-                }
-                br.close();
-              }catch(IOException e1) {
-                e1.printStackTrace();
-              }
-              Main main = new Main(name,PublicKey, key);
+              Main main = new Main(name);
               main.setVisible(true);
               main.names.add(name);
               //Creates a new Thread to keep the running() method always running

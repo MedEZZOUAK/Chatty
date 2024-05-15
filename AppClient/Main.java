@@ -16,6 +16,7 @@ import appServer.appMain;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.sql.Connection;
@@ -62,9 +63,6 @@ public class Main extends JFrame {
     JList list;
 
     JTextArea textArea;
-
-    private  String userPrivate;
-    private String publicKey;
 
     public String getName() {
         return user;
@@ -132,15 +130,10 @@ public class Main extends JFrame {
                         String key = (String) input.elementAt(3);
                         System.out.println("From " + sender );
                         try{
-                        //decrypt the key with RSA
                         RSA rsa = new RSA(1024);
-                        //get the private key of the user from the file
-                        String Privatekey1 = getprivatekey(user);
-                        System.out.println(Privatekey1);
-                        PrivateKey keyPrivate = rsa.stringToPrivateKey(Privatekey1);
-                        //decrypt the key with RSA
-                        String decryptedKey = rsa.decryptText(key, keyPrivate);
-                        System.out.println("Decrypted Key: " + decryptedKey);
+                        PrivateKey myPrivatekey = rsa.stringToPrivateKey(getprivatekey(user));
+                        String decryptedKey = rsa.decryptText(key,myPrivatekey);
+                        System.out.println("Decrypted Blowfish Key: " + decryptedKey);
                         BlowfishCipher cipher = new BlowfishCipher(decryptedKey);
                         String decryptedMessage = cipher.decrypt(message);
                         System.out.println("Decrypted Message: " + decryptedMessage);
@@ -150,23 +143,23 @@ public class Main extends JFrame {
                             e.printStackTrace();
                         }
                     } else if (type == RequestType.SEND_FILE) {
-                        Data data = (Data) input.elementAt(1);
-                        String sender = (String) input.elementAt(2);
-                        //String key = (String) input.elementAt(3);
-                        JFileChooser choose = new JFileChooser();
-                        int c = choose.showSaveDialog(null);
-                        if (c == JFileChooser.APPROVE_OPTION) {
-                            String Privatekey = userPrivate;
-                            System.out.println(Privatekey);
-                            byte[] b = data.getFile();
-                            byte[] bDec = FileEncryption.decrypt(b , Privatekey);
-                            File f = new File(choose.getSelectedFile().getPath() + data.getName().substring(data.getName().indexOf(".")));
-                            System.out.println(f.getAbsolutePath());
-                            FileOutputStream outFile = new FileOutputStream(f);
-                            outFile.write(bDec);
-                            outFile.close();
-                            textArea.append(sender + ": " + f.getAbsolutePath() + " File Saved.\n");
-                        }
+//                        Data data = (Data) input.elementAt(1);
+//                        String sender = (String) input.elementAt(2);
+//                        //String key = (String) input.elementAt(3);
+//                        JFileChooser choose = new JFileChooser();
+//                        int c = choose.showSaveDialog(null);
+//                        if (c == JFileChooser.APPROVE_OPTION) {
+////                            String Privatekey = ' ';
+////                            System.out.println(Privatekey);
+//                            byte[] b = data.getFile();
+////                            byte[] bDec = FileEncryption.decrypt(b , Privatekey);
+//                            File f = new File(choose.getSelectedFile().getPath() + data.getName().substring(data.getName().indexOf(".")));
+//                            System.out.println(f.getAbsolutePath());
+//                            FileOutputStream outFile = new FileOutputStream(f);
+////                            outFile.write(bDec);
+//                            outFile.close();
+//                            textArea.append(sender + ": " + f.getAbsolutePath() + " File Saved.\n");
+//                        }
                     }
                 } catch (Exception ex) {
                     //TODO
@@ -202,7 +195,7 @@ public class Main extends JFrame {
      *
      * @param username
      */
-    public Main(String username,String PublicKey, String key){
+    public Main(String username) throws Exception {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setIconImage(new ImageIcon(getClass().getResource("icon.png")).getImage());
         setBounds(100, 100, 726, 800);
@@ -210,10 +203,11 @@ public class Main extends JFrame {
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         setContentPane(contentPane);
         contentPane.setLayout(null);
-        this.publicKey = PublicKey;
-        this.userPrivate = key;
-
-
+        String Key = getprivatekey(username);
+        RSA rsa = new RSA(1024);
+        PrivateKey mykey = rsa.stringToPrivateKey(Key);
+        
+        
         //Create a JLabel for the image
         JLabel iconLabel = new JLabel(new ImageIcon(getClass().getResource("banner2.jpeg")));
         iconLabel.setBounds(0, 0, 726, 225); // Adjust the size and position as needed
@@ -333,9 +327,7 @@ public class Main extends JFrame {
                     String encryptedMessage = cipher.encrypt(message);
                     //crypt the Blowfish key with RSA
                     RSA rsa = new RSA(1024);
-                    //get the public key of the friend from the db
-                    String friendpublickey = getFriendKey((String) list.getSelectedValue());
-                    PublicKey keyPublic = rsa.stringToPublicKey(friendpublickey);
+                    PublicKey keyPublic = rsa.stringToPublicKey(getFriendKey((String) list.getSelectedValue()));
                     String encryptedBlowfishKey = rsa.encryptText(blowfishKey, keyPublic);
                     sendModel.addElement(encryptedMessage);
                     sendModel.addElement(user);
@@ -379,36 +371,36 @@ public class Main extends JFrame {
     }
 
     private void openFile(ActionEvent evt) {
-        try {
-            out = new ObjectOutputStream(socket.getOutputStream());
-            JFileChooser choose = new JFileChooser();
-            int c = choose.showOpenDialog(this);
-            if (c == JFileChooser.APPROVE_OPTION) {
-                File f = choose.getSelectedFile();
-                FileInputStream inFile = new FileInputStream(f);
-                byte b[] = new byte[inFile.available()];
-                inFile.read(b);
-                inFile.close();
-                String Privatekey = userPrivate;
-                byte[] bEnc = FileEncryption.encrypt(b , Privatekey);
-                Data data = new Data();
-                data.setStatus("File");//TODO
-                data.setName(f.getName());
-                data.setFile(bEnc);
-                DefaultListModel fileModel = new DefaultListModel();
-                fileModel.addElement(RequestType.SEND_FILE);
-                fileModel.addElement(data);
-                fileModel.addElement(user);
-                DefaultListModel<String> friends = new DefaultListModel<String>();
-                friends.addElement((String) list.getSelectedValue());
-                fileModel.addElement(friends);
-                fileModel.addElement(friend_);
-                //fileModel.addElement(key);
-                out.writeObject(fileModel);
-            }
-        } catch (Exception e) {
-            //TODO
-        }
+//        try {
+//            out = new ObjectOutputStream(socket.getOutputStream());
+//            JFileChooser choose = new JFileChooser();
+//            int c = choose.showOpenDialog(this);
+//            if (c == JFileChooser.APPROVE_OPTION) {
+//                File f = choose.getSelectedFile();
+//                FileInputStream inFile = new FileInputStream(f);
+//                byte b[] = new byte[inFile.available()];
+//                inFile.read(b);
+//                inFile.close();
+//                //String Privatekey = userPrivate;
+//                byte[] bEnc = FileEncryption.encrypt(b , Privatekey);
+//                Data data = new Data();
+//                data.setStatus("File");//TODO
+//                data.setName(f.getName());
+//                data.setFile(bEnc);
+//                DefaultListModel fileModel = new DefaultListModel();
+//                fileModel.addElement(RequestType.SEND_FILE);
+//                fileModel.addElement(data);
+//                fileModel.addElement(user);
+//                DefaultListModel<String> friends = new DefaultListModel<String>();
+//                friends.addElement((String) list.getSelectedValue());
+//                fileModel.addElement(friends);
+//                fileModel.addElement(friend_);
+//                //fileModel.addElement(key);
+//                out.writeObject(fileModel);
+//            }
+//        } catch (Exception e) {
+//            //TODO
+//        }
     }
 
     public JList refreshList(String username) {
@@ -447,22 +439,19 @@ public class Main extends JFrame {
         return null;
     }
     public String getprivatekey(String name){
-        String filename = "privateKey.txt";
-        String key = "";
-        try{
-            BufferedReader br = new BufferedReader(new FileReader(filename));
-            String line;
-            while(( line = br.readLine() ) != null) {
-                if(line.contains(name)) {
-                    String[] parts = line.split(" ");
-                    key = parts[1];
-                    break;
-                }
+        //get the public key from the private table
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/chatapp", "root", "");
+            Statement stmt = con.createStatement();
+            String qry = "select * from private where user=" + " '" + name + "';";
+            ResultSet rs = stmt.executeQuery(qry);
+            if (rs.next()) {
+                return rs.getString("PrivateKey");
             }
-            br.close();
-        }catch(IOException e1) {
-            e1.printStackTrace();
+        } catch (Exception ex) {
+            //TODO
         }
-        return key;
+        return null;
     }
 }
